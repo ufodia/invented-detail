@@ -1,0 +1,53 @@
+{
+  "name": "invented-detail",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Compare an original photo with its AI upscale or restoration and see which details the source supports, which it contradicts, and which were invented.",
+  "license": "MIT",
+  "author": "ufodia",
+  "homepage": "https://github.com/ufodia/invented-detail#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ufodia/invented-detail.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ufodia/invented-detail/issues"
+  },
+  "funding": "https://buymeacoffee.com/ufodia",
+  "keywords": [
+    "image-restoration",
+    "super-resolution",
+    "ai-upscaling",
+    "photo-forensics",
+    "genealogy",
+    "local-first",
+    "typescript"
+  ],
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "postbuild": "npm run prepare:hosting",
+    "preview": "vite preview --host 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:browser": "playwright test",
+    "check": "npm run typecheck && npm test && npm run build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare:hosting": "node scripts/prepare-hosting.mjs",
+    "screenshots": "node scripts/capture-screenshots.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0",
+    "@types/node": "24.10.1",
+    "prettier": "3.10.1",
+    "typescript": "7.0.2",
+    "vite": "8.3.8",
+    "vitest": "5.1.0"
+  }
+}
