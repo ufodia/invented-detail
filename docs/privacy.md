@@ -9,6 +9,8 @@ Family photos, archive material and evidence images are personal. Invented Detai
 | No storage | Nothing is written to cookies, `localStorage`, `sessionStorage` or IndexedDB. Reloading the tab discards everything. |
 | Local exports | PNG and JSON files are created in the tab and saved through the browser's downloads. |
 
+The hosting service receives ordinary requests for static HTML, JavaScript, CSS and icons, and may record access metadata under its own policies. Image pixels do not travel in those requests. External GitHub and Buy Me a Coffee links navigate to those services when clicked; the app's connection policy does not govern them. README badges are external GitHub documentation assets, not app dependencies.
+
 ## What remains your responsibility
 
 - **Exports** contain your images (PNG) or file names and measurements (JSON).

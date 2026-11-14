@@ -1,5 +1,5 @@
 import './style.css';
-import { reportJson, type FocusArea } from './core/report.ts';
+import { reportJson, samplingMetrics, type FocusArea } from './core/report.ts';
 import {
   boxShares,
   CLASSES,
@@ -59,6 +59,20 @@ let mapCanvas: HTMLCanvasElement | null = null;
 let stage: HTMLCanvasElement | null = null;
 let panel: HTMLElement | null = null;
 let built = false;
+const loadVersion = { source: 0, output: 0 };
+const pending = { source: false, output: false };
+
+function cancelLoads() {
+  for (const which of ['source', 'output'] as const) {
+    loadVersion[which]++;
+    pending[which] = false;
+  }
+}
+
+function stopWorker() {
+  worker?.terminate();
+  worker = null;
+}
 
 const intro = byId('intro');
 const progress = byId('progress');
@@ -158,14 +172,16 @@ async function decode(file: Blob, name: string, maxSide: number): Promise<Loaded
   } catch {
     throw new Error(`${name} could not be decoded. Use PNG, JPEG, WebP or AVIF.`);
   }
-  const loaded = {
-    name,
-    canvas: toCanvas(bitmap, bitmap.width, bitmap.height, maxSide),
-    naturalWidth: bitmap.width,
-    naturalHeight: bitmap.height,
-  };
-  bitmap.close();
-  return loaded;
+  try {
+    const canvas = toCanvas(bitmap, bitmap.width, bitmap.height, maxSide);
+    if (Math.min(canvas.width, canvas.height) < 32)
+      throw new Error(
+        `${name} is too small or narrow. Use images at least 32 pixels on each side after resizing.`,
+      );
+    return { name, canvas, naturalWidth: bitmap.width, naturalHeight: bitmap.height };
+  } finally {
+    bitmap.close();
+  }
 }
 
 function showSlot(which: 'source' | 'output', loaded: Loaded) {
@@ -186,20 +202,38 @@ function showSlot(which: 'source' | 'output', loaded: Loaded) {
 }
 
 async function choose(which: 'source' | 'output', file: File) {
+  const version = ++loadVersion[which];
+  pending[which] = true;
+  job++;
+  stopWorker();
+  analysis = null;
+  show('intro');
+  if (which === 'source') source = null;
+  else output = null;
+  const slot = byId(`slot-${which}`);
+  slot.classList.remove('filled');
+  slot.querySelector('.slot-thumb')?.remove();
+  byId(`name-${which}`).textContent = `Loading ${file.name}…`;
   introError.hidden = true;
   try {
     const loaded = await decode(file, file.name, which === 'source' ? 1024 : MAX_OUTPUT_SIDE);
+    if (version !== loadVersion[which]) return;
+    pending[which] = false;
     if (which === 'source') source = loaded;
     else output = loaded;
     showSlot(which, loaded);
-    if (source && output) start();
+    if (source && output && !pending.source && !pending.output) start();
   } catch (error) {
+    if (version !== loadVersion[which]) return;
+    pending[which] = false;
+    byId(`name-${which}`).textContent = `${file.name} — not loaded`;
     fail((error as Error).message);
   }
 }
 
 function start() {
   if (!source || !output) return;
+  stopWorker();
   analysis = null;
   options = null;
   built = false;
@@ -253,14 +287,12 @@ window.addEventListener('drop', (event) => {
   if (files.length >= 2) {
     // The smaller file is the source; restorations are larger.
     const [a, b] = files.sort((x, y) => x.size - y.size);
-    void (async () => {
-      await choose('source', a);
-      await choose('output', b);
-    })();
+    void Promise.all([choose('source', a), choose('output', b)]);
   } else if (files.length === 1) void choose(source ? 'output' : 'source', files[0]);
 });
 
 byId('demo-button').addEventListener('click', () => {
+  cancelLoads();
   const pair = demoPair();
   source = {
     name: 'demo-old-photo.png',
@@ -372,6 +404,7 @@ function build() {
     ),
   );
   wireStage();
+  setMode(mode);
 }
 
 function setMode(next: Mode) {
@@ -465,8 +498,8 @@ function wireStage() {
   const point = (event: PointerEvent) => {
     const rect = target.getBoundingClientRect();
     return {
-      x: ((event.clientX - rect.left) / rect.width) * target.width,
-      y: ((event.clientY - rect.top) / rect.height) * target.height,
+      x: Math.max(0, Math.min(target.width, ((event.clientX - rect.left) / rect.width) * target.width)),
+      y: Math.max(0, Math.min(target.height, ((event.clientY - rect.top) / rect.height) * target.height)),
     };
   };
   target.addEventListener('pointerdown', (event) => {
@@ -499,8 +532,12 @@ function wireStage() {
     }
     draw();
   });
-  window.addEventListener('resize', () => draw());
+  target.addEventListener('pointercancel', () => {
+    start = null;
+    draw();
+  });
 }
+window.addEventListener('resize', () => draw());
 
 function donut(shares: Record<Support, number>, score: number) {
   const r = 52;
@@ -614,12 +651,13 @@ function regionCard(r: SupportRegion) {
 function renderPanel() {
   if (!analysis || !panel || !options) return;
   const a = analysis;
+  const sampling = samplingMetrics(a, files());
   const headline =
     a.supportScore >= 0.85
-      ? 'Mostly supported by the source'
+      ? 'Mostly consistent with the source'
       : a.supportScore >= 0.6
-        ? 'Partly invented'
-        : 'Largely invented';
+        ? 'Some details need review'
+        : 'Many details need review';
   const modeToggle = h('div', { class: 'segmented', role: 'radiogroup', 'aria-label': 'Compare' });
   for (const [value, label] of [
     ['colour', 'Colour'],
@@ -647,14 +685,12 @@ function renderPanel() {
   });
   const facts: [string, string, boolean?][] = [
     [
-      'Resolution gain',
-      a.alignment.scale > 1.05
-        ? `${a.alignment.scale.toFixed(1)}× — ${pct(a.synthesizedShare)} % of the restoration's pixels do not exist in the source.`
-        : 'Same resolution as the source.',
+      'Sampling scale',
+      `${sampling.resolutionGain.toFixed(1)}× original pixel density per axis. ${pct(sampling.additionalPixelShare)} % additional pixel positions; this is not a measure of invented content.`,
     ],
     [
       'Alignment',
-      `Restoration ${a.outputSize.width} × ${a.outputSize.height} px matched to the ${a.source.width} × ${a.source.height} px source.`,
+      `Analysis uses a ${a.outputSize.width} × ${a.outputSize.height} px restoration and ${a.source.width} × ${a.source.height} px source.${a.alignment.doubtful ? ' Alignment is uncertain; inspect the overlay before interpreting the scores.' : ''}`,
       a.alignment.doubtful,
     ],
     [
@@ -678,7 +714,7 @@ function renderPanel() {
       h(
         'div',
         {},
-        h('p', { class: 'eyebrow' }, 'Verdict'),
+        h('p', { class: 'eyebrow' }, 'Heuristic summary'),
         h('h2', {}, headline),
         h(
           'p',
@@ -687,6 +723,11 @@ function renderPanel() {
         ),
       ),
       bars(a.shares),
+      h(
+        'p',
+        { class: 'fine' },
+        'Tile classifications guide visual review. They do not verify faces, text, historical truth or AI provenance.',
+      ),
     ),
     h(
       'section',
@@ -800,7 +841,7 @@ function footer(ctx: CanvasRenderingContext2D, width: number, y: number) {
   ctx.textAlign = 'left';
   ctx.fillStyle = '#f4b183';
   ctx.font = '700 18px system-ui, sans-serif';
-  ctx.fillText(`Invented Detail · ${pct(a.supportScore)} % supported by the source`, 20, y + 30);
+  ctx.fillText(`Invented Detail · ${pct(a.supportScore)} % heuristic support score`, 20, y + 30);
   ctx.font = '14px system-ui, sans-serif';
   let x = 20;
   for (const c of CLASSES) {
@@ -815,8 +856,11 @@ function footer(ctx: CanvasRenderingContext2D, width: number, y: number) {
 
 function exportMap() {
   const a = analysis!;
-  const canvas = h('canvas', { width: a.frame.width, height: a.frame.height + 76 });
+  const scale = Math.max(1, 720 / a.frame.width);
+  const imageHeight = Math.round(a.frame.height * scale);
+  const canvas = h('canvas', { width: Math.round(a.frame.width * scale), height: imageHeight + 76 });
   const ctx = canvas.getContext('2d')!;
+  ctx.scale(scale, scale);
   ctx.filter = 'grayscale(1) brightness(0.8)';
   ctx.drawImage(outputFrame!, 0, 0);
   ctx.filter = 'none';
@@ -827,7 +871,8 @@ function exportMap() {
     ctx.strokeRect(r.x, r.y, r.width, r.height);
     badge(ctx, String(r.id), r.x, r.y, rgb(r.kind), 1);
   }
-  footer(ctx, canvas.width, a.frame.height);
+  ctx.resetTransform();
+  footer(ctx, canvas.width, imageHeight);
   saveCanvas(canvas, 'invented-detail-map.png');
 }
 
@@ -835,7 +880,10 @@ function exportSheet() {
   const a = analysis!;
   const gap = 16;
   const top = 44;
-  const canvas = h('canvas', { width: a.frame.width * 2 + gap, height: a.frame.height + top + 76 });
+  const scale = Math.max(1, 360 / a.frame.width);
+  const imageWidth = Math.round(a.frame.width * scale);
+  const imageHeight = Math.round(a.frame.height * scale);
+  const canvas = h('canvas', { width: imageWidth * 2 + gap, height: imageHeight + top + 76 });
   const ctx = canvas.getContext('2d')!;
   ctx.fillStyle = '#1d1410';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -846,26 +894,38 @@ function exportSheet() {
     `Source — ${source!.name} (${source!.naturalWidth} × ${source!.naturalHeight}, enlarged)`,
     8,
     28,
+    imageWidth - 16,
   );
-  ctx.fillText(`Restoration — ${output!.name}`, a.frame.width + gap + 8, 28);
-  ctx.drawImage(sourceUp!, 0, top);
-  ctx.drawImage(outputFrame!, a.frame.width + gap, top);
-  for (const offset of [0, a.frame.width + gap])
+  ctx.fillText(`Restoration — ${output!.name}`, imageWidth + gap + 8, 28, imageWidth - 16);
+  for (const [offset, image] of [
+    [0, sourceUp!],
+    [imageWidth + gap, outputFrame!],
+  ] as const) {
+    ctx.save();
+    ctx.translate(offset, top);
+    ctx.scale(scale, scale);
+    ctx.drawImage(image, 0, 0);
     for (const r of a.regions) {
       ctx.strokeStyle = rgb(r.kind);
       ctx.lineWidth = 3;
-      ctx.strokeRect(r.x + offset, r.y + top, r.width, r.height);
-      badge(ctx, String(r.id), r.x + offset, r.y + top, rgb(r.kind), 1);
+      ctx.strokeRect(r.x, r.y, r.width, r.height);
+      badge(ctx, String(r.id), r.x, r.y, rgb(r.kind), 1);
     }
-  footer(ctx, canvas.width, a.frame.height + top);
+    ctx.restore();
+  }
+  footer(ctx, canvas.width, imageHeight + top);
   saveCanvas(canvas, 'invented-detail-comparison.png');
 }
 
 function reset() {
   job++;
+  cancelLoads();
+  stopWorker();
   source = null;
   output = null;
   analysis = null;
+  sourceUp = outputFrame = mapCanvas = stage = null;
+  panel = null;
   built = false;
   workspace.replaceChildren();
   for (const which of ['source', 'output']) {
@@ -875,6 +935,7 @@ function reset() {
     byId(`name-${which}`).textContent = 'PNG, JPEG, WebP — or drop it here';
   }
   show('intro');
+  introError.hidden = true;
 }
 
 show('intro');

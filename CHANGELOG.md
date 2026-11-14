@@ -14,9 +14,10 @@ First public release.
 - Consistency check at the source's resolution with an optional global-grade compensation.
 - Added-detail and source-detail measurement, and four classes: faithful, enhanced, invented, contradicted.
 - Automatic monochrome detection for greyscale, sepia and other toned prints, with lightness-only comparison.
-- Support score, class shares, resolution gain and synthesized-pixel share.
+- Heuristic support score, class shares and sampling density corrected to original file dimensions.
 - Support map, swipe, source and restoration views with numbered regions.
 - Focus areas with their own composition.
 - Comparison sheet PNG, support map PNG and JSON report exports.
-- Synthetic old-photo demo, 26 unit tests, 6 Playwright browser tests and CI.
+- Synthetic old-photo demo, unit and Playwright browser tests, and CI.
 - Strict Content-Security-Policy with `connect-src 'none'`.
+- Decode-generation guards, worker cancellation when replacing images, undersized-image validation, and original-resolution report boxes.

@@ -10,7 +10,8 @@ import { compensate, fitTone } from './tone.ts';
  * only down to the source's resolution: averaging the output back to the
  * source grid must reproduce the source ("consistency"). Detail finer than
  * the source grid ("added detail") cannot be checked at all. Where the source
- * itself was flat or blurred, that added detail was invented.
+ * itself was flat or blurred, that added detail is flagged as potentially
+ * unsupported. These fixed-threshold labels do not establish provenance or truth.
  */
 
 export type Mode = 'colour' | 'lightness';
@@ -79,10 +80,8 @@ export interface Analysis {
   alignment: Alignment;
   monochromeSource: boolean;
   tone: { significant: boolean; shift: number };
-  /** Share of output pixels that do not exist in the source: 1 − 1/factor². */
-  synthesizedShare: number;
   shares: Record<Support, number>;
-  /** Faithful + enhanced: the part of the picture the source can vouch for. */
+  /** Faithful + enhanced classified tiles; a heuristic, not a calibrated confidence. */
   supportScore: number;
   regions: SupportRegion[];
   /** Tile grid in source tiles. */
@@ -407,7 +406,6 @@ export function analyze(p: Prepared, options: Options): Analysis {
     alignment: p.alignment,
     monochromeSource: p.monochromeSource,
     tone: { significant: tone.significant, shift: tone.shift },
-    synthesizedShare: p.alignment.scale > 1 ? 1 - 1 / p.alignment.scale ** 2 : 0,
     shares,
     supportScore: shares.faithful + shares.enhanced,
     regions,

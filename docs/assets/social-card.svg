@@ -47,7 +47,7 @@
   <text x="72" y="142" fill="#f4b183" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="4">RESTORATION HONESTY</text>
   <text x="68" y="226" fill="#f5ece4" font-family="Iowan Old Style, Palatino, Georgia, serif" font-size="80" font-weight="600" letter-spacing="-2">Invented</text>
   <text x="68" y="306" fill="#f5ece4" font-family="Iowan Old Style, Palatino, Georgia, serif" font-size="80" font-weight="600" letter-spacing="-2">Detail</text>
-  <text x="72" y="356" fill="#e6d9cf" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="24">Map the detail an AI restoration made up.</text>
+  <text x="72" y="356" fill="#e6d9cf" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="24">Review what an AI restoration added.</text>
 
   <g font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="650">
     <rect x="72" y="398" width="198" height="40" rx="20" fill="url(#accent)"/>
@@ -110,8 +110,8 @@
     <circle cx="56" cy="55" r="34" fill="none" stroke="rgb(98,160,234)" stroke-width="10" stroke-dasharray="32 214" stroke-dashoffset="-130" transform="rotate(-90 56 55)"/>
     <circle cx="56" cy="55" r="34" fill="none" stroke="rgb(244,177,74)" stroke-width="10" stroke-dasharray="47 214" stroke-dashoffset="-162" transform="rotate(-90 56 55)"/>
     <text x="56" y="61" text-anchor="middle" font-size="17" font-weight="800" fill="#f5ece4">76 %</text>
-    <text x="108" y="44" font-size="18" font-weight="700" fill="#f5ece4">Partly invented</text>
+    <text x="108" y="44" font-size="18" font-weight="700" fill="#f5ece4">Review the details</text>
     <text x="108" y="68" font-size="13" fill="#b9a596">22 % invented · 1 % contradicted</text>
-    <text x="108" y="88" font-size="13" fill="#b9a596">4.0× — 94 % of pixels not in the source</text>
+    <text x="108" y="88" font-size="13" fill="#b9a596">Synthetic example · Heuristic review map</text>
   </g>
 </svg></svg>

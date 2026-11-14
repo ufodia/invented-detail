@@ -1,17 +1,19 @@
 # Method
 
-Invented Detail asks how much of an AI restoration the original photo can vouch for. It uses only classic signal processing — no model — so every number can be reproduced and explained.
+Invented Detail uses classic signal processing to highlight differences between an original photo and its restoration. Fixed thresholds make its measurements inspectable and reproducible. They are heuristics for review, not a validation of truth or AI provenance.
 
 ## The principle
 
-A photo of `w × h` pixels records the scene only down to the size of one pixel. An enlargement by a factor `s` has `s²` times as many pixels; `1 − 1/s²` of them carry information the source never contained. Two things can still be checked:
+An enlargement by a factor `s` has `s²` times as many pixel positions. That arithmetic says nothing about new information: ordinary interpolation also adds positions. This tool instead measures two properties on bounded analysis images:
 
-1. **Consistency.** Averaged back down to the source's grid, a faithful restoration must reproduce the source. If it does not, the restoration *contradicts* the evidence.
-2. **Added detail.** Everything finer than the source grid is unverifiable. Where the source itself shows structure (an edge, a window frame), sharper detail is a plausible *enhancement*. Where the source is flat or blurred, the detail was *invented*.
+1. **Consistency.** Compare the restoration averaged back to the source's analysis grid. A large difference is labelled *contradicted*; it can also reflect alignment error, damage removal or compression.
+2. **Added detail.** Compare finer texture against the source's local structure. On structured areas it is labelled *enhanced*, and on flat or blurred areas *invented*. Neither label establishes which pixels came from a model or whether their content is correct.
 
 ## 1. Decoding and limits
 
-The source is analysed at up to 1024 px on its longer side; the restoration is decoded at up to 4096 px. EXIF orientation is applied. Transparent pixels are composited on white.
+The source is analysed at up to 1024 px on its longer side; the restoration is downsampled to at most 4096 px. Files are limited to 80 MiB, and each resulting canvas must remain at least 32 px on both sides. EXIF orientation is applied. Transparent pixels are composited on white for analysis. Decoding a very large original can still exceed browser memory; the byte-size limit is not a memory guarantee.
+
+Fine structure removed by downsampling is outside the analysis. The report records both original and analysis dimensions. Its `resolutionGain` corrects the alignment scale for both size reductions; `additionalPixelShare` describes the increase in pixel positions, never the amount of invented content.
 
 ## 2. Alignment
 
@@ -56,7 +58,7 @@ A source is monochrome when its colour is a function of lightness: a\* and b\* a
 
 ## Limitations
 
-- **Unsupported is not the same as wrong.** The method cannot tell a correct guess from a wrong one; it tells you what the source can confirm.
+- **No truth or provenance guarantee.** The method cannot distinguish a correct guess from a wrong one or establish what an AI generated. It flags image properties for review.
 - **Partially resolved detail.** Lettering, faces and textures that the source shows as a recognizable but blurred shape usually land in *enhanced*: the source confirms that structure exists, not its exact form.
 - **Thresholds are fixed.** They suit typical 2–8× restorations of photographs. Extremely noisy scans can raise consistency differences; very soft restorations add little detail and look faithful.
 - **Geometry.** Rotation, perspective changes, cropping beyond the search range and content-aware recomposition break the alignment.

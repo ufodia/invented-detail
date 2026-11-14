@@ -66,7 +66,6 @@ describe('support classification', () => {
     expect(a.shares.faithful + a.shares.enhanced).toBeGreaterThan(0.95);
     expect(a.shares.invented).toBeLessThan(0.03);
     expect(a.shares.contradicted).toBeLessThan(0.02);
-    expect(a.synthesizedShare).toBeCloseTo(1 - 1 / 16, 2);
   });
 
   it('fine texture where the source is flat is invented, and found as a region', () => {

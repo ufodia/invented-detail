@@ -23,6 +23,16 @@ export interface FocusArea {
 
 const round = (v: number, d = 4) => Number(v.toFixed(d));
 
+/** Sampling density in the original files, independent of the bounded analysis canvases. */
+export function samplingMetrics(a: Analysis, files: { source: FileInfo; output: FileInfo }) {
+  const resolutionGain =
+    a.alignment.scale * (a.source.width / files.source.width) * (files.output.width / a.outputSize.width);
+  return {
+    resolutionGain,
+    additionalPixelShare: resolutionGain > 1 ? 1 - 1 / resolutionGain ** 2 : 0,
+  };
+}
+
 /** A portable JSON report with region boxes in frame pixels and in the restoration's own pixels. */
 export function reportJson(
   a: Analysis,
@@ -30,16 +40,26 @@ export function reportJson(
   focus: FocusArea[],
   now = new Date(),
 ): string {
+  const sampling = samplingMetrics(a, files);
   const toOutput = (b: { x: number; y: number; width: number; height: number }) => {
-    // Frame pixel → source index → output pixel.
-    const map = (v: number, t: number) => Math.round(((v + 0.5) / a.factor - 0.5) * a.alignment.scale + t);
-    const x0 = map(b.x, a.alignment.tx);
-    const y0 = map(b.y, a.alignment.ty);
+    // Frame boundary → source index → decoded output boundary → original file boundary.
+    const map = (v: number, t: number, native: number, decoded: number) =>
+      Math.max(
+        0,
+        Math.min(
+          native,
+          Math.round((((v / a.factor - 0.5) * a.alignment.scale + t + 0.5) * native) / decoded),
+        ),
+      );
+    const mapX = (x: number) => map(x, a.alignment.tx, files.output.width, a.outputSize.width);
+    const mapY = (y: number) => map(y, a.alignment.ty, files.output.height, a.outputSize.height);
+    const x0 = mapX(b.x);
+    const y0 = mapY(b.y);
     return {
       x: x0,
       y: y0,
-      width: map(b.x + b.width, a.alignment.tx) - x0,
-      height: map(b.y + b.height, a.alignment.ty) - y0,
+      width: mapX(b.x + b.width) - x0,
+      height: mapY(b.y + b.height) - y0,
     };
   };
   return (
@@ -50,11 +70,15 @@ export function reportJson(
         files,
         settings: a.options,
         frame: a.frame,
-        resolutionGain: round(a.alignment.scale, 3),
-        synthesizedShare: round(a.synthesizedShare),
+        analysisSizes: { source: a.source, output: a.outputSize },
+        resolutionGain: round(sampling.resolutionGain, 3),
+        additionalPixelShare: round(sampling.additionalPixelShare),
+        interpretation:
+          'Fixed-threshold tile heuristics, not proof of truth or AI provenance. Sampling density does not measure invented content.',
         supportScore: round(a.supportScore),
         shares: Object.fromEntries(CLASSES.map((c) => [c, round(a.shares[c])])),
         alignment: {
+          coordinates: 'analysis pixels (analysisSizes)',
           scale: round(a.alignment.scale, 4),
           offsetX: round(a.alignment.tx, 2),
           offsetY: round(a.alignment.ty, 2),
@@ -80,6 +104,7 @@ export function reportJson(
             height: Math.round(f.height),
           },
           shares: Object.fromEntries(CLASSES.map((c) => [c, round(f.shares[c])])),
+          boxInOutput: toOutput(f),
         })),
       },
       null,

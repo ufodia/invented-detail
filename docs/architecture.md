@@ -26,7 +26,7 @@ src/core/
 3. `analyze` classifies tiles and finds regions; the worker posts the analysis and an RGBA support map.
 4. Changing a setting sends `analyze` again. Focus areas are computed on the page from the tile grid, without a worker round-trip.
 
-Every request carries a `job` number so stale answers are ignored.
+Every worker request carries a `job` number so stale answers are ignored. Each image slot also has its own decode generation: a delayed file cannot replace a newer selection, reset or demo. Replacing a pair or resetting terminates the previous worker instead of queueing unused analysis.
 
 ## Worker protocol
 
@@ -51,20 +51,24 @@ Every request carries a `job` number so stale answers are ignored.
   "files": { "source": { "name", "width", "height" }, "output": { … } },
   "settings": { "mode": "colour | lightness", "compensateTone": true },
   "frame": { "width", "height" },
+  "analysisSizes": { "source": { "width", "height" }, "output": { … } },
   "resolutionGain": 4.003,
-  "synthesizedShare": 0.9376,
+  "additionalPixelShare": 0.9376,
+  "interpretation": "Fixed-threshold tile heuristics, not proof of truth or AI provenance. …",
   "supportScore": 0.763,
   "shares": { "faithful", "enhanced", "invented", "contradicted" },
-  "alignment": { "scale", "offsetX", "offsetY", "doubtful" },
+  "alignment": { "coordinates": "analysis pixels (analysisSizes)", "scale", "offsetX", "offsetY", "doubtful" },
   "grade": { "significant", "shift" },
   "regions": [{ "id", "kind", "shareOfImage", "consistency", "addedDetail", "sourceDetail",
                 "box": { … },          // frame pixels
                 "boxInOutput": { … } }], // restoration pixels
-  "focusAreas": [{ "label", "box", "shares" }]
+  "focusAreas": [{ "label", "box", "boxInOutput", "shares" }]
 }
 ```
 
+`resolutionGain` is the alignment scale adjusted to the original files' dimensions. `additionalPixelShare` is `max(0, 1 − 1/resolutionGain²)` and describes pixel positions only. A resize alone produces additional positions. All `boxInOutput` coordinates include the restoration's decode-size correction and are clipped to the original file boundaries. Frame boxes and alignment offsets use the recorded analysis coordinate system.
+
 ## Testing
 
-- **Unit tests** (26, Vitest): plain enlargements stay faithful, mean-preserving fine texture on a flat source is invented and located, a visible colour change is contradicted, global grades are compensated (and counted when compensation is off), colourized greyscale is faithful in lightness mode, greyscale and sepia are detected as monochrome and colour photos are not, focus-area shares, support-map size, frame capping for large outputs, and hosting metadata.
-- **Browser tests** (6, Playwright): the demo verdict and classes, all views, highlighting and the colour/lightness switch, focus areas on the face, JSON and PNG exports, a plain enlargement being mostly supported, an undecodable file and the phone layout.
+- **Unit tests** (Vitest): synthetic classification scenes, tone and monochrome handling, focus-area shares, maps, frame capping, original-file sampling metrics, report coordinate mapping, and hosting metadata.
+- **Browser tests** (Playwright): the demo, all views, highlighting, colour/lightness, focus areas, JSON/PNG exports, ordinary enlargements, invalid and undersized files, stale decoding, original-versus-analysis sizes, and phone layout. The default local test port is **4174**; an occupied port fails instead of reusing another project.
