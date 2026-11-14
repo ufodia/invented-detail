@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="t d">
+  <title id="t">How each tile is classified</title>
+  <desc id="d">Step one: average the restoration back down to the source grid and compare. If it disagrees, the tile is contradicted. Step two: if it agrees, measure the detail the restoration adds below the source grid and the detail the source itself shows. Little added detail is faithful; added detail where the source shows structure is enhanced; added detail where the source is flat is invented.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0l10 5-10 5z" fill="#f4b183"/></marker>
+    <style>
+      .k{font:700 12px 'Segoe UI',Helvetica,Arial,sans-serif;letter-spacing:2px;fill:#f4b183}
+      .h{font:600 22px 'Iowan Old Style',Palatino,Georgia,serif;fill:#f5ece4}
+      .s{font:14px 'Segoe UI',Helvetica,Arial,sans-serif;fill:#b9a596}
+      .b{font:700 17px 'Segoe UI',Helvetica,Arial,sans-serif;fill:#1d1410}
+      .card{fill:#221913;stroke:#ffffff;stroke-opacity:.09}
+    </style>
+  </defs>
+  <rect width="1200" height="520" rx="24" fill="#140e0b"/>
+  <text x="40" y="52" class="k">PER 4 × 4 SOURCE-PIXEL TILE · ALL IN YOUR BROWSER</text>
+  <text x="40" y="88" fill="#f5ece4" font-family="Iowan Old Style, Palatino, Georgia, serif" font-size="30" font-weight="600">Two questions decide every tile</text>
+
+  <!-- Question 1 -->
+  <g transform="translate(40 120)">
+    <rect class="card" width="360" height="360" rx="18"/>
+    <text x="24" y="44" class="h">1 · Does it agree?</text>
+    <text x="24" y="74" class="s">Average the restoration back down</text>
+    <text x="24" y="94" class="s">to the source grid and compare.</text>
+    <!-- mini diagram -->
+    <g transform="translate(24 120)">
+      <rect width="96" height="96" fill="#b5654a"/>
+      <path d="M0 24h96M0 48h96M0 72h96M24 0v96M48 0v96M72 0v96" stroke="#f0d8c4" stroke-opacity=".5"/>
+      <path d="M108 48h34" stroke="#f4b183" stroke-width="2.5" marker-end="url(#arrow)"/>
+      <rect x="152" y="24" width="48" height="48" fill="#a9705a"/>
+      <text x="176" y="92" text-anchor="middle" class="s">average</text>
+      <text x="236" y="54" class="s" fill="#f5ece4">vs source</text>
+    </g>
+    <rect x="24" y="252" width="312" height="84" rx="12" fill="rgb(236,84,84)"/>
+    <text x="42" y="284" class="b">Differs → Contradicted</text>
+    <text x="42" y="310" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#2a1410">ΔE (or ΔL) above 10 even at source resolution</text>
+  </g>
+
+  <path d="M408 300h44" stroke="#f4b183" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="414" y="288" class="s">agrees</text>
+
+  <!-- Question 2: matrix -->
+  <g transform="translate(470 120)">
+    <rect class="card" width="690" height="360" rx="18"/>
+    <text x="24" y="44" class="h">2 · What does it add, and could the source show it?</text>
+    <g transform="translate(130 80)">
+      <rect x="0" y="0" width="240" height="110" rx="10" fill="rgb(244,177,74)"/>
+      <text x="20" y="44" class="b">Invented</text>
+      <text x="20" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#2a1a08">crisp detail, flat source:</text>
+      <text x="20" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#2a1a08">the source cannot confirm it</text>
+      <rect x="252" y="0" width="240" height="110" rx="10" fill="rgb(98,160,234)"/>
+      <text x="272" y="44" class="b">Enhanced</text>
+      <text x="272" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#0f2238">crisp detail where the source</text>
+      <text x="272" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#0f2238">already shows structure</text>
+      <rect x="0" y="122" width="492" height="96" rx="10" fill="rgb(92,196,142)"/>
+      <text x="20" y="166" class="b">Faithful</text>
+      <text x="20" y="192" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#0e2a1c">adds little beyond what the source records</text>
+      <!-- axes -->
+      <path d="M-24 218V-6" stroke="#f5ece4" stroke-width="2" marker-end="url(#arrow)"/>
+      <text x="-40" y="110" class="s" transform="rotate(-90 -40 110)" text-anchor="middle">detail the restoration adds</text>
+      <path d="M0 242h500" stroke="#f5ece4" stroke-width="2" marker-end="url(#arrow)"/>
+      <text x="246" y="268" class="s" text-anchor="middle">detail the source shows →</text>
+    </g>
+  </g>
+</svg>
