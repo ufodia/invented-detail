@@ -2,6 +2,8 @@
 
 Invented Detail is a static site: `npm run build` writes everything to `dist/`.
 
+Production: **[invented-detail.vercel.app](https://invented-detail.vercel.app/)**. The production origin is `https://invented-detail.vercel.app/`.
+
 ## Build
 
 ```bash
@@ -24,6 +26,8 @@ npm run check   # strict typecheck, unit tests and production build into dist/
 ## Vercel
 
 [`vercel.json`](../vercel.json) sets the framework, `npm ci`, `npm run build`, the `dist` output directory and the headers above. Node.js 24 comes from `engines`.
+
+To recover hosting, reconnect the authorized Vercel account to `ufodia/invented-detail`, select `main` as the production branch and retain these repository settings. Reassign `invented-detail.vercel.app` to the restored project and verify that `VERCEL_PROJECT_PRODUCTION_URL` resolves to that production hostname. Deploy the checked `main` commit, then confirm the deployment's source SHA, canonical URL, security headers and synthetic demo at the public address. Keep account tokens and `.vercel/` metadata outside Git.
 
 ## Other hosts
 

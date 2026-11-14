@@ -6,6 +6,7 @@
 <p align="center">Compare an original with its restoration. Inspect consistency, added detail and the areas worth questioning — entirely in your browser.</p>
 
 <p align="center">
+  <a href="https://invented-detail.vercel.app/"><b>Live demo ↗</b></a> ·
   <a href="#quick-start"><b>Quick start</b></a> ·
   <a href="#the-four-answers">The four answers</a> ·
   <a href="#how-it-works">How it works</a> ·
