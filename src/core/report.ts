@@ -23,6 +23,11 @@ export interface FocusArea {
 
 const round = (v: number, d = 4) => Number(v.toFixed(d));
 
+export function analysisHeadline(a: Analysis): string {
+  if (a.regions.some(region => region.kind === 'contradicted')) return 'Contradictions found';
+  return a.supportScore >= 0.85 ? 'Mostly consistent with the source' : a.supportScore >= 0.6 ? 'Some details need review' : 'Many details need review';
+}
+
 /** Sampling density in the original files, independent of the bounded analysis canvases. */
 export function samplingMetrics(a: Analysis, files: { source: FileInfo; output: FileInfo }) {
   const resolutionGain =

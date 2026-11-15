@@ -1,5 +1,5 @@
 import './style.css';
-import { reportJson, samplingMetrics, type FocusArea } from './core/report.ts';
+import { analysisHeadline, reportJson, samplingMetrics, type FocusArea } from './core/report.ts';
 import {
   boxShares,
   CLASSES,
@@ -652,12 +652,7 @@ function renderPanel() {
   if (!analysis || !panel || !options) return;
   const a = analysis;
   const sampling = samplingMetrics(a, files());
-  const headline =
-    a.supportScore >= 0.85
-      ? 'Mostly consistent with the source'
-      : a.supportScore >= 0.6
-        ? 'Some details need review'
-        : 'Many details need review';
+  const headline = analysisHeadline(a);
   const modeToggle = h('div', { class: 'segmented', role: 'radiogroup', 'aria-label': 'Compare' });
   for (const [value, label] of [
     ['colour', 'Colour'],

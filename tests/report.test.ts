@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { reportJson, samplingMetrics, type FocusArea } from '../src/core/report.ts';
+import { analysisHeadline, reportJson, samplingMetrics, type FocusArea } from '../src/core/report.ts';
 import type { Analysis } from '../src/core/support.ts';
 
 const shares = { faithful: 0.6, enhanced: 0.2, invented: 0.15, contradicted: 0.05 };
@@ -38,6 +38,12 @@ const analysis: Analysis = {
   },
 };
 const file = (name: string, width: number, height: number) => ({ name, width, height });
+
+it('prioritizes a detected contradiction over a high overall support score', () => {
+  const high = { ...analysis, supportScore: 0.93 };
+  expect(analysisHeadline(high)).toBe('Mostly consistent with the source');
+  expect(analysisHeadline({ ...high, regions: [{ ...analysis.regions[0], kind: 'contradicted' }] })).toBe('Contradictions found');
+});
 const now = new Date('2026-11-14T12:00:00Z');
 
 describe('original-file sampling metrics and report coordinates', () => {

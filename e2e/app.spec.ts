@@ -18,7 +18,9 @@ async function expectSummaryMatchesReport(page: Page) {
   // Canvas font rasterization differs by OS. Check the summary's contract against
   // the measured score rather than treating one platform's demo score as truth.
   const expected =
-    report.supportScore >= 0.85
+    report.regions.some((region: { kind: string }) => region.kind === 'contradicted')
+      ? 'Contradictions found'
+      : report.supportScore >= 0.85
       ? 'Mostly consistent with the source'
       : report.supportScore >= 0.6
         ? 'Some details need review'
@@ -59,7 +61,9 @@ test('demo: support score, classes and regions', async ({ page }) => {
   page.on('pageerror', (error) => errors.push(error.message));
   await loadDemo(page);
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-  await expectSummaryMatchesReport(page);
+  const report = await expectSummaryMatchesReport(page);
+  expect(report.regions.some((region: { kind: string }) => region.kind === 'contradicted')).toBe(true);
+  await expect(page.locator('.summary h2')).toHaveText('Contradictions found');
   await expect(page.locator('.fact', { hasText: 'Comparison' })).toContainText('Lightness only');
   await expect(page.locator('.fact', { hasText: 'Sampling scale' })).toContainText('4.0×');
   await expect(page.locator('.region.c-contradicted').first()).toBeVisible();
@@ -146,6 +150,8 @@ test('a plain enlargement of the source is mostly supported', async ({ page }) =
   await expect(page.locator('.summary h2')).toHaveText('Mostly consistent with the source', {
     timeout: 60_000,
   });
+  const report = await readReport(page);
+  expect(report.regions.some((region: { kind: string }) => region.kind === 'contradicted')).toBe(false);
 });
 
 test('a stale decode cannot replace a newer file or the demo', async ({ page }) => {
