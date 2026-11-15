@@ -67,7 +67,7 @@ npx playwright install chromium  # only needed for browser tests/screenshots
 npm run dev
 ```
 
-Open the printed `http://127.0.0.1:5173` address, then drop the **original photo** into slot 1 and the **AI restoration** into slot 2 — or click **Try the old-photo demo**. Drag on the image to mark a **focus area** such as a face or a sign and see what supports it.
+Open the printed `http://127.0.0.1:5173` address, then drop the **original photo** into slot 1 and the **AI restoration** into slot 2 — or click **Try the old-photo demo**. Drag on the image to mark a **focus area** such as a face or a sign and see what supports it. You can also open **Add focus area with coordinates** to enter a rectangle using the keyboard. The view tabs support Left/Right, Home and End.
 
 ## The four answers
 

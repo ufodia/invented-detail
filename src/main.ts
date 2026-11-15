@@ -59,6 +59,7 @@ let mapCanvas: HTMLCanvasElement | null = null;
 let stage: HTMLCanvasElement | null = null;
 let panel: HTMLElement | null = null;
 let built = false;
+let analyzing = false;
 const loadVersion = { source: 0, output: 0 };
 const pending = { source: false, output: false };
 
@@ -116,15 +117,22 @@ function onMessage(message: WorkerResponse) {
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(small, 0, 0, message.frame.width, message.frame.height);
   } else if (message.type === 'result') {
+    analyzing = false;
     analysis = message.analysis;
     mapCanvas = canvasFrom(message.map, analysis.frame.width, analysis.frame.height);
     focus = focus.map((f) => ({ ...f, shares: boxShares(analysis!, f) }));
     const busy = document.getElementById('busy');
     if (busy) busy.hidden = true;
     show('workspace');
-    if (!built) build();
+    const entering = !built;
+    if (entering) build();
     renderPanel();
     draw();
+    if (entering) {
+      const heading = workspace.querySelector<HTMLElement>('h1');
+      heading?.setAttribute('tabindex', '-1');
+      heading?.focus();
+    }
   } else if (message.type === 'error') {
     fail(message.message);
   }
@@ -138,6 +146,10 @@ function show(view: 'intro' | 'progress' | 'workspace') {
 
 function fail(message: string) {
   if (analysis) {
+    analyzing = false;
+    options = { ...analysis.options };
+    renderPanel();
+    byId('busy').hidden = true;
     toast(message);
     show('workspace');
     return;
@@ -333,14 +345,34 @@ function build() {
         {
           type: 'button',
           role: 'tab',
+          id: `view-${m.id}`,
+          'aria-controls': 'view-panel',
           class: 'mode',
           'data-mode': m.id,
           'aria-selected': String(m.id === mode),
+          tabindex: m.id === mode ? 0 : -1,
           onclick: () => setMode(m.id),
         },
         m.label,
       ),
     );
+  modebar.addEventListener('keydown', (event) => {
+    const index = MODES.findIndex((item) => item.id === mode);
+    const next =
+      event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? MODES.length - 1
+          : event.key === 'ArrowRight'
+            ? (index + 1) % MODES.length
+            : event.key === 'ArrowLeft'
+              ? (index + MODES.length - 1) % MODES.length
+              : -1;
+    if (next < 0) return;
+    event.preventDefault();
+    setMode(MODES[next].id);
+    modebar.querySelector<HTMLButtonElement>(`[data-mode="${mode}"]`)?.focus();
+  });
   rangeInput = h('input', {
     id: 'view-range',
     type: 'range',
@@ -372,7 +404,7 @@ function build() {
       h(
         'div',
         { class: 'ws-actions' },
-        h('span', { id: 'busy', class: 'busy', hidden: true }),
+        h('span', { id: 'busy', class: 'busy', role: 'status', hidden: true }),
         h(
           'button',
           { class: 'button ghost small', type: 'button', onclick: () => reset() },
@@ -387,7 +419,18 @@ function build() {
         'div',
         { class: 'viewer' },
         modebar,
-        h('div', { class: 'stage-wrap' }, stage),
+        h(
+          'div',
+          {
+            class: 'stage-wrap',
+            id: 'view-panel',
+            role: 'tabpanel',
+            tabindex: 0,
+            'aria-labelledby': `view-${mode}`,
+          },
+          stage,
+        ),
+        coordinateAreaForm(),
         h(
           'div',
           { class: 'controls' },
@@ -409,8 +452,11 @@ function build() {
 
 function setMode(next: Mode) {
   mode = next;
-  for (const b of workspace.querySelectorAll<HTMLButtonElement>('.mode'))
+  for (const b of workspace.querySelectorAll<HTMLButtonElement>('.mode')) {
     b.setAttribute('aria-selected', String(b.dataset.mode === mode));
+    b.tabIndex = b.dataset.mode === mode ? 0 : -1;
+  }
+  byId('view-panel').setAttribute('aria-labelledby', `view-${mode}`);
   rangeInput.disabled = mode !== 'swipe';
   draw();
 }
@@ -489,6 +535,50 @@ function badge(ctx: CanvasRenderingContext2D, text: string, x: number, y: number
   ctx.textBaseline = 'middle';
   ctx.fillText(text, x + w / 2, top + 12 * px);
   ctx.textBaseline = 'alphabetic';
+}
+
+function coordinateAreaForm(): HTMLElement {
+  const { width, height } = analysis!.frame;
+  const field = (id: string, label: string, value: number, min: number, max: number) => {
+    const input = h('input', { id: `area-${id}`, type: 'number', value, min, max, step: 1, required: true });
+    return { input, label: h('label', { for: `area-${id}` }, label, input) };
+  };
+  const xField = field('x', 'Left (pixels)', 0, 0, width - 1);
+  const yField = field('y', 'Top (pixels)', 0, 0, height - 1);
+  const wField = field('width', 'Width (pixels)', Math.min(100, width), 1, width);
+  const hField = field('height', 'Height (pixels)', Math.min(100, height), 1, height);
+  const status = h('p', { role: 'status', class: 'coordinate-status' });
+  const form = h(
+    'form',
+    { class: 'coordinate-form', 'aria-label': 'Add focus area with coordinates' },
+    h('p', {}, `Image: ${width} × ${height} pixels. Coordinates start at the top left.`),
+    h('div', { class: 'coordinate-fields' }, xField.label, yField.label, wField.label, hField.label),
+    h('button', { type: 'submit', class: 'button ghost small' }, 'Add focus rectangle'),
+    status,
+  );
+  form.addEventListener('input', () => {
+    wField.input.setCustomValidity('');
+    hField.input.setCustomValidity('');
+  });
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const [x, y, w, hgt] = [xField, yField, wField, hField].map((f) => f.input.valueAsNumber);
+    wField.input.setCustomValidity(x + w > width ? 'The rectangle extends past the image width.' : '');
+    hField.input.setCustomValidity(y + hgt > height ? 'The rectangle extends past the image height.' : '');
+    if (!form.reportValidity()) return;
+    if (!analysis) return;
+    const box = { x, y, width: w, height: hgt };
+    focus.push({ label: `Focus area ${focus.length + 1}`, ...box, shares: boxShares(analysis, box) });
+    renderPanel();
+    draw();
+    status.textContent = `Rectangle added: left ${x}, top ${y}, width ${w}, height ${hgt} pixels.`;
+  });
+  return h(
+    'details',
+    { class: 'coordinate-picker' },
+    h('summary', {}, 'Add focus area with coordinates'),
+    form,
+  );
 }
 
 function wireStage() {
@@ -636,6 +726,7 @@ function regionCard(r: SupportRegion) {
       {
         type: 'button',
         class: 'link',
+        id: `highlight-${r.id}`,
         onclick: () => {
           selected = selected === r.id ? null : r.id;
           renderPanel();
@@ -648,12 +739,32 @@ function regionCard(r: SupportRegion) {
   );
 }
 
+function requestAnalysis() {
+  if (!options || !panel) return;
+  analyzing = true;
+  for (const button of panel!.querySelectorAll<HTMLButtonElement>('.exports button')) button.disabled = true;
+  const busy = byId('busy');
+  busy.hidden = false;
+  busy.textContent = 'Updating comparison…';
+  send({ type: 'analyze', job: ++job, options });
+}
+
 function renderPanel() {
   if (!analysis || !panel || !options) return;
+  const focusedId = panel.contains(document.activeElement) ? document.activeElement?.id : '';
   const a = analysis;
   const sampling = samplingMetrics(a, files());
   const headline = analysisHeadline(a);
   const modeToggle = h('div', { class: 'segmented', role: 'radiogroup', 'aria-label': 'Compare' });
+  const chooseComparison = (next: 'colour' | 'lightness') => {
+    options = { ...options!, mode: next };
+    for (const button of modeToggle.querySelectorAll<HTMLButtonElement>('[role="radio"]')) {
+      const active = button.id === `compare-${next}`;
+      button.setAttribute('aria-checked', String(active));
+      button.tabIndex = active ? 0 : -1;
+    }
+    requestAnalysis();
+  };
   for (const [value, label] of [
     ['colour', 'Colour'],
     ['lightness', 'Lightness only'],
@@ -664,19 +775,33 @@ function renderPanel() {
         {
           type: 'button',
           role: 'radio',
+          id: `compare-${value}`,
+          tabindex: options.mode === value ? 0 : -1,
           'aria-checked': String(options.mode === value),
-          onclick: () => {
-            options = { ...options!, mode: value };
-            send({ type: 'analyze', job: ++job, options });
+          onkeydown: (event: Event) => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes((event as KeyboardEvent).key)) return;
+            event.preventDefault();
+            const key = (event as KeyboardEvent).key;
+            const next =
+              key === 'Home'
+                ? 'colour'
+                : key === 'End'
+                  ? 'lightness'
+                  : value === 'colour'
+                    ? 'lightness'
+                    : 'colour';
+            chooseComparison(next);
+            document.getElementById(`compare-${next}`)?.focus();
           },
+          onclick: () => chooseComparison(value),
         },
         label,
       ),
     );
-  const grade = h('input', { type: 'checkbox', checked: options.compensateTone });
+  const grade = h('input', { id: 'compensate-tone', type: 'checkbox', checked: options.compensateTone });
   grade.addEventListener('change', () => {
     options = { ...options!, compensateTone: grade.checked };
-    send({ type: 'analyze', job: ++job, options });
+    requestAnalysis();
   });
   const facts: [string, string, boolean?][] = [
     [
@@ -808,6 +933,9 @@ function renderPanel() {
       ),
     ),
   );
+  for (const button of panel.querySelectorAll<HTMLButtonElement>('.exports button'))
+    button.disabled = analyzing;
+  if (focusedId) document.getElementById(focusedId)?.focus({ preventScroll: true });
 }
 
 function files() {
@@ -922,6 +1050,7 @@ function reset() {
   sourceUp = outputFrame = mapCanvas = stage = null;
   panel = null;
   built = false;
+  analyzing = false;
   workspace.replaceChildren();
   for (const which of ['source', 'output']) {
     const slot = byId(`slot-${which}`);
@@ -931,6 +1060,7 @@ function reset() {
   }
   show('intro');
   introError.hidden = true;
+  byId('demo-button').focus();
 }
 
 show('intro');

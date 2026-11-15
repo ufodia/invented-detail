@@ -1,6 +1,38 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
+test('keyboard users can switch views and add a focus rectangle without dragging', async ({ page }) => {
+  await loadDemo(page);
+  await expect(page.locator('#workspace h1')).toBeFocused();
+  await page.setViewportSize({ width: 320, height: 900 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  const views = page.getByRole('tablist', { name: 'View' });
+  await views.getByRole('tab').first().press('End');
+  await expect(views.getByRole('tab').last()).toBeFocused();
+  await views.getByRole('tab').last().press('Home');
+  await expect(views.getByRole('tab').first()).toBeFocused();
+  await expect(page.locator('#view-panel')).toHaveAttribute(
+    'aria-labelledby',
+    (await views.getByRole('tab').first().getAttribute('id'))!,
+  );
+  await page.getByText('Add focus area with coordinates', { exact: true }).press('Enter');
+  const form = page.getByRole('form', { name: 'Add focus area with coordinates' });
+  await form.getByLabel('Left (pixels)').fill('10');
+  await form.getByLabel('Top (pixels)').fill('20');
+  await form.getByLabel('Width (pixels)').fill('40');
+  await form.getByLabel('Height (pixels)').fill('50');
+  await form.getByRole('button', { name: 'Add focus rectangle' }).press('Enter');
+  await expect(form.getByRole('status')).toContainText('left 10, top 20, width 40, height 50');
+  const report = await readReport(page);
+  expect(report.focusAreas[0].box).toEqual({ x: 10, y: 20, width: 40, height: 50 });
+  const colour = page.getByRole('radio', { name: 'Colour', exact: true });
+  await colour.press('End');
+  await expect(page.getByRole('radio', { name: 'Lightness only' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByRole('radio', { name: 'Lightness only' })).toBeFocused();
+  await page.getByRole('button', { name: 'New comparison', exact: true }).press('Enter');
+  await expect(page.locator('#demo-button')).toBeFocused();
+});
+
 async function loadDemo(page: Page) {
   await page.goto('/');
   await page.getByRole('button', { name: 'Try the old-photo demo' }).click();
