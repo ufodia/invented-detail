@@ -218,6 +218,7 @@ Invented Detail is free and has no ads. If it helped you caption a restoration h
 
 <p align="center">
   <a href="https://buymeacoffee.com/ufodia"><img src="docs/assets/support.svg" alt="Buy Me a Coffee — support ufodia" width="296" height="64"></a>
+  <a href="https://github.com/sponsors/ufodia">Support on GitHub Sponsors</a>
 </p>
 
 ## License
