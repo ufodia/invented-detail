@@ -17,10 +17,9 @@ async function expectSummaryMatchesReport(page: Page) {
   const report = await readReport(page);
   // Canvas font rasterization differs by OS. Check the summary's contract against
   // the measured score rather than treating one platform's demo score as truth.
-  const expected =
-    report.regions.some((region: { kind: string }) => region.kind === 'contradicted')
-      ? 'Contradictions found'
-      : report.supportScore >= 0.85
+  const expected = report.regions.some((region: { kind: string }) => region.kind === 'contradicted')
+    ? 'Contradictions found'
+    : report.supportScore >= 0.85
       ? 'Mostly consistent with the source'
       : report.supportScore >= 0.6
         ? 'Some details need review'

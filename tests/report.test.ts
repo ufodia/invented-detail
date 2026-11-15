@@ -42,7 +42,9 @@ const file = (name: string, width: number, height: number) => ({ name, width, he
 it('prioritizes a detected contradiction over a high overall support score', () => {
   const high = { ...analysis, supportScore: 0.93 };
   expect(analysisHeadline(high)).toBe('Mostly consistent with the source');
-  expect(analysisHeadline({ ...high, regions: [{ ...analysis.regions[0], kind: 'contradicted' }] })).toBe('Contradictions found');
+  expect(analysisHeadline({ ...high, regions: [{ ...analysis.regions[0], kind: 'contradicted' }] })).toBe(
+    'Contradictions found',
+  );
 });
 const now = new Date('2026-11-14T12:00:00Z');
 
